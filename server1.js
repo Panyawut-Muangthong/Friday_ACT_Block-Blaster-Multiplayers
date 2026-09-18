@@ -5,7 +5,15 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// Allow cross-origin requests & ensure websocket/polling fallback works smoothly on Render
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  },
+  transports: ['websocket', 'polling']
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -116,9 +124,20 @@ function removePlayerFromRoom(room, playerId) {
 }
 
 io.on('connection', (socket) => {
-  socket.on('join_room', ({ roomId, playerName, playerId }) => {
+  // Support both object payloads and ack callbacks
+  socket.on('join_room', (data = {}, ack) => {
+    let { roomId, playerName, playerId } = data;
     roomId = (roomId || '').trim().toUpperCase();
-    if (!roomId) return;
+
+    const sendError = (msg) => {
+      socket.emit('error_msg', msg);
+      socket.emit('join_error', { message: msg });
+      if (typeof ack === 'function') ack({ success: false, error: msg });
+    };
+
+    if (!roomId) {
+      return sendError('Please provide a valid room code.');
+    }
 
     const pId = playerId || 'p_' + Math.random().toString(36).substring(2, 9);
     socket.join(roomId);
@@ -149,14 +168,12 @@ io.on('connection', (socket) => {
       if (playerName) existing.name = playerName;
     } else {
       if (room.started) {
-        socket.emit('error_msg', 'Game is already running.');
-        return;
+        return sendError('Game is already running.');
       }
 
       const activeCount = Object.keys(room.players).length;
       if (activeCount >= 2) {
-        socket.emit('error_msg', 'Room is currently full (Max 2 players).');
-        return;
+        return sendError('Room is currently full (Max 2 players).');
       }
 
       const assignedRole = Object.values(room.players).some(p => p.role === 'p1') ? 'p2' : 'p1';
@@ -175,11 +192,20 @@ io.on('connection', (socket) => {
       };
     }
 
-    socket.emit('session_created', { playerId: pId, roomId });
-    io.to(roomId).emit('room_update', sanitizeRoom(room));
+    const safeRoom = sanitizeRoom(room);
+
+    // Fire all possible confirmation patterns expected by frontend clients
+    socket.emit('session_created', { playerId: pId, roomId, room: safeRoom });
+    socket.emit('join_success', { playerId: pId, roomId, room: safeRoom });
+    io.to(roomId).emit('room_update', safeRoom);
+
+    // Invoke client-side callback if the frontend uses a Promise/ack
+    if (typeof ack === 'function') {
+      ack({ success: true, playerId: pId, roomId, room: safeRoom });
+    }
   });
 
-  socket.on('update_room_settings', ({ targetScore, matchDuration }) => {
+  socket.on('update_room_settings', ({ targetScore, matchDuration } = {}) => {
     const room = rooms[socket.roomId];
     if (!room || room.hostId !== socket.playerId || room.started) return;
 
@@ -216,7 +242,7 @@ io.on('connection', (socket) => {
     io.to(room.roomId).emit('room_update', sanitizeRoom(room));
   });
 
-  socket.on('place_piece', ({ pieceIndex, row, col }) => {
+  socket.on('place_piece', ({ pieceIndex, row, col } = {}) => {
     const room = rooms[socket.roomId];
     if (!room || !room.started || room.winner) return;
 
@@ -345,5 +371,8 @@ function sanitizeRoom(room) {
   };
 }
 
+// Ensure 0.0.0.0 host binding for cloud containers like Render
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Block Blaster Duel active on port ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Block Blaster Duel active on port ${PORT}`);
+});
