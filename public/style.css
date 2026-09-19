@@ -377,8 +377,8 @@ label {
 
 .player-panel.is-own {
   --player: var(--cyan);
-  border-color: rgba(0, 210, 255, 0.45);
-  box-shadow: 0 4px 25px rgba(0, 210, 255, 0.08);
+  border-color: rgba(0, 210, 255, 0.6);
+  box-shadow: 0 4px 30px rgba(0, 210, 255, 0.14);
 }
 
 .player-panel.enemy {
@@ -404,6 +404,15 @@ label {
   margin-left: 8px;
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.player-panel.is-own .you-tag {
+  background: rgba(0, 210, 255, 0.18);
+  border: 1px solid rgba(0, 210, 255, 0.45);
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-weight: 800;
+  display: inline-block;
 }
 
 .score {

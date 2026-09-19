@@ -67,9 +67,10 @@ const translations = {
     win: 'You win!',
     lose: 'Your rival wins',
     tie: 'It’s a draw',
+    winsGame: 'wins the game!',
     targetReason: 'Target score reached.',
     timeReason: 'Time is up. Highest score wins.',
-    blockedReason: 'Both boards ran out of moves. Highest score wins.',
+    blockedReason: 'No more moves can be made. Highest score wins.',
     disconnectReason: 'Your rival left or their reconnect window expired.',
     saved: 'Rules saved.',
     replaced: 'This session was opened in another tab.',
@@ -147,9 +148,10 @@ const translations = {
     win: 'คุณชนะ!',
     lose: 'คู่แข่งชนะ',
     tie: 'เสมอกัน',
+    winsGame: 'ชนะการแข่งขัน!',
     targetReason: 'ทำคะแนนถึงเป้าหมายแล้ว',
     timeReason: 'หมดเวลา ผู้ที่คะแนนสูงกว่าชนะ',
-    blockedReason: 'ทั้งสองกระดานวางต่อไม่ได้ ผู้ที่คะแนนสูงกว่าชนะ',
+    blockedReason: 'ทุกกระดานวางบล็อกต่อไม่ได้แล้ว ผู้ที่คะแนนสูงสุดชนะ',
     disconnectReason: 'คู่แข่งออกจากห้อง หรือหมดเวลาเชื่อมต่อใหม่',
     saved: 'บันทึกกติกาแล้ว',
     replaced: 'เปิดเซสชันนี้ในแท็บอื่นแล้ว',
@@ -202,6 +204,10 @@ let toastKey = null;
 let joining = false;
 let replaced = false;
 let lastTick = null;
+let isDraggingPiece = false;
+let pendingRoomState = false;
+let shouldFocusOwnBoard = false;
+let shouldFocusResult = false;
 
 const t = (key) => translations[lang][key] || key;
 
@@ -344,6 +350,10 @@ socket.on('connect', () => {
 
 socket.on('disconnect', () => {
   pending = false;
+  isDraggingPiece = false;
+  pendingRoomState = false;
+  const avatar = $('drag-avatar');
+  if (avatar) avatar.style.display = 'none';
   localize();
   render();
   if (!replaced) toast('network');
@@ -359,6 +369,10 @@ socket.on('error', (err) => {
 
 socket.on('session_replaced', () => {
   replaced = true;
+  isDraggingPiece = false;
+  pendingRoomState = false;
+  const avatar = $('drag-avatar');
+  if (avatar) avatar.style.display = 'none';
   clearSession();
   state = null;
   seat = null;
@@ -376,7 +390,9 @@ socket.on('room_state', (next) => {
     if (next.status === 'playing') {
       showLobby = false;
       lastTick = null;
+      shouldFocusOwnBoard = true;
     } else if (next.status === 'finished') {
+      shouldFocusResult = true;
       if (next.winnerSeat === seat) {
         [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.18, i * 0.08, 'triangle'));
       } else if (next.winnerSeat !== null) {
@@ -385,9 +401,21 @@ socket.on('room_state', (next) => {
     }
   }
 
+  // If match just finished, abort any active drag immediately and display results
+  if (next.status === 'finished' && isDraggingPiece) {
+    isDraggingPiece = false;
+    pendingRoomState = false;
+    const avatar = $('drag-avatar');
+    if (avatar) avatar.style.display = 'none';
+    render();
+    return;
+  }
+
   const mine = next.players.find((p) => p.seat === seat);
   if (selected && !mine?.rack.some((p) => p.id === selected)) {
-    selected = null;
+    if (!isDraggingPiece) {
+      selected = null;
+    }
   }
 
   if (next.action && next.revision !== previous?.revision) {
@@ -397,6 +425,13 @@ socket.on('room_state', (next) => {
         [440, 554, 659, 880].forEach((f, i) => tone(f, 0.18, i * 0.065, 'triangle'));
       }
     }
+  }
+
+  // If user is actively dragging a piece, defer render to avoid destroying active DOM elements
+  if (isDraggingPiece) {
+    pendingRoomState = true;
+    updateHud();
+    return;
   }
 
   render();
@@ -551,9 +586,13 @@ function startDragPiece(e, piece, player, board, buttons) {
   if (state.status !== 'playing' || pending || !socket.connected || player.blocked) return;
   if (e.button !== undefined && e.button !== 0) return;
 
+  isDraggingPiece = true;
+
   const isTouch = e.pointerType === 'touch';
   const startX = e.clientX;
   const startY = e.clientY;
+  const pointerId = e.pointerId;
+  const currentTarget = e.currentTarget || e.target;
   let hasMoved = false;
 
   const w = Math.max(...piece.cells.map((c) => c[0])) + 1;
@@ -562,12 +601,23 @@ function startDragPiece(e, piece, player, board, buttons) {
   // Measure actual board cell size and gap dynamically from the player's board
   let cellSize = 36;
   let cellGap = 4;
+  let originLeft = 0;
+  let originTop = 0;
+
   if (buttons.length >= 2) {
     const r0 = buttons[0].getBoundingClientRect();
     const r1 = buttons[1].getBoundingClientRect();
     cellSize = r0.width;
     cellGap = Math.max(2, r1.left - r0.right);
+    originLeft = r0.left;
+    originTop = r0.top;
   }
+
+  try {
+    if (pointerId !== undefined && currentTarget && currentTarget.setPointerCapture) {
+      currentTarget.setPointerCapture(pointerId);
+    }
+  } catch {}
 
   let avatar = $('drag-avatar');
   if (!avatar) {
@@ -617,7 +667,9 @@ function startDragPiece(e, piece, player, board, buttons) {
     const pieceLeft = targetX - totalW / 2;
     const pieceTop = targetY - totalH / 2;
 
-    const firstCell = buttons[0].getBoundingClientRect();
+    const firstCell = (buttons[0] && buttons[0].isConnected)
+      ? buttons[0].getBoundingClientRect()
+      : { left: originLeft, top: originTop };
     const step = cellSize + cellGap;
 
     const gridX = Math.round((pieceLeft - firstCell.left) / step);
@@ -655,7 +707,7 @@ function startDragPiece(e, piece, player, board, buttons) {
   }
 
   function onPointerMove(moveEvent) {
-    if (hasMoved && moveEvent.cancelable) {
+    if (moveEvent.cancelable) {
       moveEvent.preventDefault();
     }
     const dist = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);
@@ -673,22 +725,37 @@ function startDragPiece(e, piece, player, board, buttons) {
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('pointerup', onPointerUp);
     window.removeEventListener('pointercancel', onPointerUp);
+    window.removeEventListener('blur', onPointerUp);
 
+    try {
+      if (pointerId !== undefined && currentTarget && currentTarget.releasePointerCapture) {
+        currentTarget.releasePointerCapture(pointerId);
+      }
+    } catch {}
+
+    isDraggingPiece = false;
     avatar.style.display = 'none';
     buttons.forEach((b) => b.classList.remove('preview', 'invalid'));
 
     if (hasMoved) {
       if (currentDropX !== null && currentDropY !== null) {
         selected = piece.id;
+        pendingRoomState = false;
         place(currentDropX, currentDropY);
       } else {
         selected = piece.id;
+        if (pendingRoomState) {
+          pendingRoomState = false;
+        }
         render();
       }
     } else {
       // Tap / click to select for click-to-place
       selected = piece.id;
       tone(360, 0.04);
+      if (pendingRoomState) {
+        pendingRoomState = false;
+      }
       render();
     }
   }
@@ -696,6 +763,7 @@ function startDragPiece(e, piece, player, board, buttons) {
   window.addEventListener('pointermove', onPointerMove, { passive: false });
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('pointercancel', onPointerUp);
+  window.addEventListener('blur', onPointerUp);
 }
 
 function render() {
@@ -754,8 +822,19 @@ function render() {
     const isTie = state.winnerSeat === null;
     $('result').className = 'banner ' + (isTie ? 'banner-tie' : isWinner ? 'banner-win' : 'banner-lose');
 
+    const winner = state.players.find((p) => p.seat === state.winnerSeat);
     const title = document.createElement('strong');
-    title.textContent = t(isTie ? 'tie' : isWinner ? 'win' : 'lose');
+
+    if (isTie) {
+      title.textContent = t('tie');
+    } else if (winner) {
+      const winnerName = winner.name || (t('player') + ' ' + (winner.seat + 1));
+      const youSuffix = isWinner ? ` (${t('you')})` : '';
+      title.textContent = `${winnerName} ${t('winsGame')}${youSuffix}`;
+    } else {
+      title.textContent = t(isWinner ? 'win' : 'lose');
+    }
+
     const reason = document.createElement('p');
     reason.textContent = t((state.reason || 'time') + 'Reason');
     $('result').replaceChildren(title, reason);
@@ -764,7 +843,14 @@ function render() {
   $('boards').replaceChildren();
   const sortedScores = [...state.players].sort((a, b) => b.score - a.score);
 
-  state.players.forEach((p, index) => {
+  // Always display own player's board first, followed by opponents
+  const displayPlayers = [...state.players].sort((a, b) => {
+    if (a.seat === seat) return -1;
+    if (b.seat === seat) return 1;
+    return a.seat - b.seat;
+  });
+
+  displayPlayers.forEach((p) => {
     const own = p.seat === seat;
     const rank = sortedScores.findIndex((item) => item.seat === p.seat) + 1;
     const panel = document.createElement('article');
@@ -778,7 +864,7 @@ function render() {
     name.textContent = `${rankPrefix}${p.name}`;
     const tag = document.createElement('span');
     tag.className = 'you-tag';
-    tag.textContent = own ? t('you') : t('player') + ' ' + (index + 1);
+    tag.textContent = own ? t('you') : t('player') + ' ' + (p.seat + 1);
     name.append(tag);
 
     const score = document.createElement('div');
@@ -872,6 +958,26 @@ function render() {
     panel.append(help);
     $('boards').append(panel);
   });
+
+  if (shouldFocusOwnBoard) {
+    shouldFocusOwnBoard = false;
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    setTimeout(() => {
+      const ownPanel = document.querySelector('.player-panel.is-own');
+      if (ownPanel) {
+        ownPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        $('arena')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  }
+
+  if (shouldFocusResult) {
+    shouldFocusResult = false;
+    setTimeout(() => {
+      $('result')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 60);
+  }
 }
 
 // ----------------------------------------------------------------------------
