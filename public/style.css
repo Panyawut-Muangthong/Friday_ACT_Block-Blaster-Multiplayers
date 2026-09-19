@@ -1,0 +1,764 @@
+/* ==========================================================================
+   BLOCK BLASTER · DUEL - STYLESHEET
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Root Variables & Reset
+   -------------------------------------------------------------------------- */
+:root {
+  color-scheme: dark;
+  --cyan: #00d2ff;
+  --rose: #ff416c;
+  --muted: #9398a7;
+  --panel: rgba(23, 25, 32, 0.94);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #101115;
+  color: #f5f6fa;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+#background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   2. Form Controls & Buttons
+   -------------------------------------------------------------------------- */
+button,
+input {
+  font: inherit;
+  border: 1px solid #373c49;
+  border-radius: 10px;
+  padding: 12px 15px;
+  background: #21242e;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+input {
+  width: 100%;
+  outline: none;
+}
+
+input:focus,
+button:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+}
+
+button:hover:enabled {
+  border-color: var(--cyan);
+}
+
+.primary {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  color: #06131b;
+  font-weight: 800;
+}
+
+.quiet {
+  background: transparent;
+}
+
+.reset-btn {
+  border-color: #ff416c88;
+  color: #ff416c;
+}
+
+.reset-btn:hover:enabled {
+  background: rgba(255, 65, 108, 0.15);
+  border-color: #ff416c;
+}
+
+/* --------------------------------------------------------------------------
+   3. Layout & Header
+   -------------------------------------------------------------------------- */
+.wrap {
+  max-width: 1120px;
+  margin: auto;
+  padding: 28px 24px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.brand {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.7px;
+}
+
+.mark {
+  color: var(--cyan);
+  margin-right: 8px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.eyebrow {
+  color: var(--cyan);
+  letter-spacing: 3px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: clamp(40px, 7vw, 72px);
+  letter-spacing: -3px;
+  line-height: 1.04;
+  margin: 14px 0 20px;
+}
+
+h1 span {
+  color: var(--cyan);
+}
+
+.lead {
+  color: var(--muted);
+  max-width: 520px;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+/* --------------------------------------------------------------------------
+   4. Panels & Common Elements
+   -------------------------------------------------------------------------- */
+.panel {
+  background: var(--panel);
+  border: 1px solid #303440;
+  border-radius: 20px;
+  padding: 26px;
+  box-shadow: 0 18px 60px #0003;
+}
+
+h2 {
+  font-size: 20px;
+  margin: 0 0 22px;
+  letter-spacing: -0.5px;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b9bdc8;
+  margin: 18px 0 8px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.row > * {
+  flex: 1;
+}
+
+.note {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.wide {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.divider {
+  border-top: 1px solid #303440;
+  margin-top: 20px;
+  padding-top: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   5. Lobby View
+   -------------------------------------------------------------------------- */
+.lobby-layout {
+  display: grid;
+  grid-template-columns: 1fr 440px;
+  gap: 60px;
+  align-items: start;
+}
+
+.steps {
+  margin-top: 38px;
+  display: grid;
+  gap: 18px;
+}
+
+.step {
+  display: flex;
+  gap: 14px;
+  color: #b9bdc8;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.step b {
+  color: var(--cyan);
+  font-family: monospace;
+  font-size: 17px;
+}
+
+.step strong {
+  color: white;
+}
+
+.presence {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 0;
+  border-bottom: 1px solid #303440;
+  gap: 10px;
+}
+
+.ready-tag,
+.offline-tag {
+  font-size: 10px;
+  border-radius: 5px;
+  padding: 5px 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.ready-tag {
+  background: #00d2ff18;
+  color: var(--cyan);
+}
+
+.offline-tag {
+  background: #ff416c18;
+  color: var(--rose);
+}
+
+.room-code {
+  font-family: monospace;
+  color: var(--cyan);
+  font-size: 25px;
+  letter-spacing: 3px;
+}
+
+.config {
+  margin-top: 20px;
+}
+
+.mode-container {
+  margin-top: 14px;
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 10px 14px;
+  background: #191c24;
+  border: 1px solid #373c49;
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.mode-btn:hover:enabled {
+  border-color: var(--cyan);
+}
+
+.mode-btn.active {
+  background: rgba(0, 210, 255, 0.15);
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.config-status {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 12px;
+  text-align: right;
+  opacity: 0.8;
+}
+
+/* --------------------------------------------------------------------------
+   6. Arena & Heads-Up Display (HUD)
+   -------------------------------------------------------------------------- */
+.arena-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
+.arena-top h2 {
+  margin: 0;
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.metric {
+  background: var(--panel);
+  border: 1px solid #303440;
+  padding: 18px 22px;
+  border-radius: 14px;
+}
+
+.metric small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 7px;
+}
+
+.metric strong {
+  font-size: 23px;
+}
+
+/* --------------------------------------------------------------------------
+   7. Game Duel, Boards & Racks
+   -------------------------------------------------------------------------- */
+.duel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.player-panel {
+  --player: var(--rose);
+  padding: 20px;
+  position: relative;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.player-panel.is-own {
+  --player: var(--cyan);
+  border-color: rgba(0, 210, 255, 0.45);
+  box-shadow: 0 4px 25px rgba(0, 210, 255, 0.08);
+}
+
+.player-panel.enemy {
+  --player: var(--rose);
+}
+
+.player-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.player-name {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.you-tag {
+  color: var(--player);
+  font-size: 10px;
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.score {
+  color: var(--player);
+  font-size: 27px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  aspect-ratio: 1;
+  background: #101218;
+  padding: 8px;
+  border: 1px solid #303440;
+  border-radius: 12px;
+  touch-action: manipulation;
+}
+
+.cell {
+  padding: 0;
+  min-width: 0;
+  border: 1px solid #292d38;
+  border-radius: 4px;
+  background: #1b1e27;
+  aspect-ratio: 1;
+}
+
+.cell:hover:enabled {
+  border-color: var(--player);
+}
+
+.cell:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.cell.filled {
+  background: var(--player);
+  border-color: var(--player);
+  box-shadow: inset 0 2px 0 #ffffff45;
+}
+
+.cell.preview {
+  background: color-mix(in srgb, var(--player) 40%, #1b1e27);
+  border-color: var(--player);
+}
+
+.cell.invalid {
+  background: #ff416c55;
+  border-color: #ff416c;
+}
+
+.rack {
+  display: flex;
+  gap: 10px;
+  min-height: 114px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.piece {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 104px;
+  padding: 10px;
+  background: #11131a;
+}
+
+.piece.selected {
+  border: 2px solid var(--player);
+  background: color-mix(in srgb, var(--player) 9%, #11131a);
+}
+
+.mini {
+  display: grid;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.mini i {
+  width: 15px;
+  height: 15px;
+  border-radius: 2px;
+}
+
+.mini .block {
+  background: var(--player);
+  box-shadow: inset 0 2px 0 #ffffff35;
+}
+
+.enemy-cooking {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.board-help {
+  font-size: 12px;
+  min-height: 20px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   8. Banner, Toast & Notifications
+   -------------------------------------------------------------------------- */
+.banner {
+  border: 1px solid #00d2ff55;
+  background: #00d2ff0d;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.banner strong {
+  font-size: 24px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.banner p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.banner.banner-win {
+  border: 1px solid rgba(16, 185, 129, 0.6);
+  background: rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.12);
+}
+
+.banner.banner-win strong {
+  color: #10b981;
+}
+
+.banner.banner-lose {
+  border: 1px solid rgba(255, 65, 108, 0.6);
+  background: rgba(255, 65, 108, 0.15);
+  box-shadow: 0 0 30px rgba(255, 65, 108, 0.12);
+}
+
+.banner.banner-lose strong {
+  color: #ff416c;
+}
+
+.banner.banner-tie {
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  background: rgba(245, 158, 11, 0.15);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.12);
+}
+
+.banner.banner-tie strong {
+  color: #f59e0b;
+}
+
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  border: 1px solid #555c6d;
+  background: #242936;
+  border-radius: 12px;
+  padding: 14px 22px;
+  max-width: calc(100% - 32px);
+  box-shadow: 0 10px 40px #0008;
+  font-size: 14px;
+}
+
+#connection {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.urgent {
+  color: var(--rose);
+  animation: pulse 1s infinite;
+}
+
+.host-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+footer {
+  color: #646b7b;
+  font-size: 11px;
+  text-align: center;
+  margin-top: 34px;
+  letter-spacing: 1px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   9. Responsive Design & Media Queries
+   -------------------------------------------------------------------------- */
+@media (max-width: 850px) {
+  .lobby-layout {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .intro {
+    max-width: 580px;
+  }
+
+  .steps {
+    display: none;
+  }
+
+  .duel {
+    gap: 12px;
+  }
+
+  .player-panel {
+    padding: 12px;
+  }
+
+  .wrap {
+    padding: 20px 14px;
+  }
+
+  .panel {
+    border-radius: 14px;
+  }
+
+  header {
+    margin-bottom: 26px;
+  }
+
+  .cell {
+    border-radius: 3px;
+  }
+
+  .board {
+    gap: 3px;
+    padding: 5px;
+  }
+
+  .mini i {
+    width: 11px;
+    height: 11px;
+  }
+
+  .piece {
+    padding: 5px;
+    height: 80px;
+  }
+
+  .rack {
+    min-height: 90px;
+    gap: 5px;
+  }
+
+  .score {
+    font-size: 22px;
+  }
+
+  .player-name {
+    font-size: 13px;
+  }
+
+  .you-tag {
+    display: block;
+    margin: 3px 0 0;
+  }
+
+  .metric {
+    padding: 14px;
+  }
+
+  .metric strong {
+    font-size: 18px;
+  }
+
+  .metric small {
+    letter-spacing: 1px;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .header-actions button {
+    padding: 9px;
+  }
+
+  .brand {
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 520px) {
+  .duel {
+    grid-template-columns: 1fr;
+  }
+
+  .player-panel {
+    max-width: 440px;
+    width: 100%;
+    margin: auto;
+  }
+
+  .enemy .board {
+    max-width: 260px;
+    width: 100%;
+    margin: auto;
+  }
+
+  .enemy .rack {
+    min-height: 40px;
+  }
+
+  .hud {
+    gap: 6px;
+  }
+
+  .metric {
+    padding: 12px 9px;
+  }
+
+  .metric small {
+    font-size: 9px;
+  }
+
+  .arena-top .row {
+    flex: none;
+  }
+
+  .lead {
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+  }
+}
