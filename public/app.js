@@ -20,7 +20,7 @@ const translations = {
     hero: 'Small blocks.<br><span>Big rivalry.</span>',
     lead: 'Your board. Your moves. One winner. Fit the pieces, blast full lines, and race your rival to the target.',
     step1: 'Share a room code with a friend to enter the duel.',
-    step2: 'Choose a piece, then click a cell to place its top-left corner. No rotations.',
+    step2: 'Drag and drop a piece onto your board, or tap to select and click to place.',
     step3: 'Clear rows and columns together for bigger combos. First to the target wins.',
     enter: 'Enter the arena',
     name: 'Player name',
@@ -100,7 +100,7 @@ const translations = {
     hero: 'บล็อกเล็ก ๆ<br><span>ศึกที่ยิ่งใหญ่</span>',
     lead: 'กระดานของคุณ เกมของคุณ ผู้ชนะเพียงหนึ่งเดียว วางบล็อก ระเบิดแถว แล้วทำคะแนนให้ถึงเป้าหมายก่อนคู่แข่ง',
     step1: 'แชร์รหัสห้องให้เพื่อนเพื่อเข้าร่วมการดวล',
-    step2: 'เลือกชิ้นบล็อก แล้วกดช่องมุมซ้ายบนที่ต้องการวาง หมุนชิ้นไม่ได้',
+    step2: 'ลากชิ้นบล็อกไปวางบนกระดาน หรือแตะเลือกชิ้นแล้วกดช่องเพื่อวาง หมุนชิ้นไม่ได้',
     step3: 'เติมแถวและคอลัมน์พร้อมกันเพื่อรับคอมโบ ใครถึงเป้าหมายก่อนชนะ',
     enter: 'เข้าสู่สนาม',
     name: 'ชื่อผู้เล่น',
@@ -547,6 +547,157 @@ function updateHud() {
   $('status').textContent = t(!socket.connected ? 'reconnecting' : state.status === 'playing' ? 'playing' : 'finished');
 }
 
+function startDragPiece(e, piece, player, board, buttons) {
+  if (state.status !== 'playing' || pending || !socket.connected || player.blocked) return;
+  if (e.button !== undefined && e.button !== 0) return;
+
+  const isTouch = e.pointerType === 'touch';
+  const startX = e.clientX;
+  const startY = e.clientY;
+  let hasMoved = false;
+
+  const w = Math.max(...piece.cells.map((c) => c[0])) + 1;
+  const h = Math.max(...piece.cells.map((c) => c[1])) + 1;
+
+  // Measure actual board cell size and gap dynamically from the player's board
+  let cellSize = 36;
+  let cellGap = 4;
+  if (buttons.length >= 2) {
+    const r0 = buttons[0].getBoundingClientRect();
+    const r1 = buttons[1].getBoundingClientRect();
+    cellSize = r0.width;
+    cellGap = Math.max(2, r1.left - r0.right);
+  }
+
+  let avatar = $('drag-avatar');
+  if (!avatar) {
+    avatar = document.createElement('div');
+    avatar.id = 'drag-avatar';
+    document.body.appendChild(avatar);
+  }
+
+  avatar.innerHTML = '';
+  avatar.className = 'is-dragging';
+  avatar.style.display = 'none';
+  avatar.style.gridTemplateColumns = `repeat(${w}, ${cellSize}px)`;
+  avatar.style.gridTemplateRows = `repeat(${h}, ${cellSize}px)`;
+  avatar.style.gap = `${cellGap}px`;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const block = document.createElement('div');
+      if (piece.cells.some(([dx, dy]) => dx === x && dy === y)) {
+        block.className = 'drag-block';
+      } else {
+        block.style.opacity = '0';
+      }
+      avatar.appendChild(block);
+    }
+  }
+
+  // Lift piece above finger on touch devices so thumb does not obscure the blocks
+  const touchOffsetY = isTouch ? Math.max(60, cellSize * 1.6) : 0;
+  avatar.style.left = `${startX}px`;
+  avatar.style.top = `${startY - touchOffsetY}px`;
+
+  let currentDropX = null;
+  let currentDropY = null;
+
+  function updateHover(clientX, clientY) {
+    const targetX = clientX;
+    const targetY = clientY - touchOffsetY;
+
+    avatar.style.left = `${targetX}px`;
+    avatar.style.top = `${targetY}px`;
+
+    const totalW = w * cellSize + (w - 1) * cellGap;
+    const totalH = h * cellSize + (h - 1) * cellGap;
+
+    // Piece top-left screen position relative to avatar center
+    const pieceLeft = targetX - totalW / 2;
+    const pieceTop = targetY - totalH / 2;
+
+    const firstCell = buttons[0].getBoundingClientRect();
+    const step = cellSize + cellGap;
+
+    const gridX = Math.round((pieceLeft - firstCell.left) / step);
+    const gridY = Math.round((pieceTop - firstCell.top) / step);
+
+    buttons.forEach((b) => b.classList.remove('preview', 'invalid'));
+
+    if (gridX >= -w && gridX < 8 && gridY >= -h && gridY < 8) {
+      const valid = piece.cells.every(
+        ([dx, dy]) =>
+          gridX + dx >= 0 &&
+          gridX + dx < 8 &&
+          gridY + dy >= 0 &&
+          gridY + dy < 8 &&
+          !player.grid[gridY + dy][gridX + dx]
+      );
+
+      for (const [dx, dy] of piece.cells) {
+        const cx = gridX + dx;
+        const cy = gridY + dy;
+        if (cx >= 0 && cx < 8 && cy >= 0 && cy < 8) {
+          buttons[cy * 8 + cx].classList.add(valid ? 'preview' : 'invalid');
+        }
+      }
+
+      if (valid) {
+        currentDropX = gridX;
+        currentDropY = gridY;
+        return;
+      }
+    }
+
+    currentDropX = null;
+    currentDropY = null;
+  }
+
+  function onPointerMove(moveEvent) {
+    if (hasMoved && moveEvent.cancelable) {
+      moveEvent.preventDefault();
+    }
+    const dist = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);
+    if (dist > 6) {
+      if (!hasMoved) {
+        hasMoved = true;
+        avatar.style.display = 'grid';
+        selected = piece.id;
+      }
+      updateHover(moveEvent.clientX, moveEvent.clientY);
+    }
+  }
+
+  function onPointerUp() {
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerUp);
+
+    avatar.style.display = 'none';
+    buttons.forEach((b) => b.classList.remove('preview', 'invalid'));
+
+    if (hasMoved) {
+      if (currentDropX !== null && currentDropY !== null) {
+        selected = piece.id;
+        place(currentDropX, currentDropY);
+      } else {
+        selected = piece.id;
+        render();
+      }
+    } else {
+      // Tap / click to select for click-to-place
+      selected = piece.id;
+      tone(360, 0.04);
+      render();
+    }
+  }
+
+  window.addEventListener('pointermove', onPointerMove, { passive: false });
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
+}
+
 function render() {
   localize();
   const arena = state && (state.status === 'playing' || (state.status === 'finished' && !showLobby));
@@ -704,10 +855,8 @@ function render() {
         }
 
         btn.append(mini);
-        btn.onclick = () => {
-          selected = piece.id;
-          tone(360, 0.04);
-          render();
+        btn.onpointerdown = (e) => {
+          startDragPiece(e, piece, p, board, buttons);
         };
         pieces.append(btn);
       }
