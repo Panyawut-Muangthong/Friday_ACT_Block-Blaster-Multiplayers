@@ -16,7 +16,7 @@ const $ = (id) => document.getElementById(id);
 // ----------------------------------------------------------------------------
 const translations = {
   en: {
-    eyebrow: 'REAL-TIME · 1 VS 1',
+    eyebrow: 'REAL-TIME · Multiplayer',
     hero: 'Small blocks.<br><span>Big rivalry.</span>',
     lead: 'Your board. Your moves. One winner. Fit the pieces, blast full lines, and race your rival to the target.',
     step1: 'Share a room code with a friend to enter the duel.',
