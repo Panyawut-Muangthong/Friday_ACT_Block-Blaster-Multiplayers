@@ -6,7 +6,7 @@
  * ============================================================================
  */
 
-const { generateRack, canFitAnywhere } = require('./gameLogic');
+const { generateRack, canFitAnywhere, getPlayableSaviorPiece, shapeFits } = require('./gameLogic');
 
 const MAX_PLAYERS = 10;
 
@@ -83,7 +83,7 @@ function registerSocketHandlers(io, roomManager) {
           name: playerName,
           score: 0,
           grid: Array(8).fill(null).map(() => Array(8).fill(0)),
-          rack: generateRack(),
+          rack: generateRack(Array(8).fill(null).map(() => Array(8).fill(0))),
           blocked: false,
           connected: true
         };
@@ -141,7 +141,7 @@ function registerSocketHandlers(io, roomManager) {
       room.players.forEach((p) => {
         p.score = 0;
         p.grid = Array(8).fill(null).map(() => Array(8).fill(0));
-        p.rack = generateRack();
+        p.rack = generateRack(p.grid);
         p.blocked = false;
       });
 
@@ -208,7 +208,16 @@ function registerSocketHandlers(io, roomManager) {
 
       // Replenish rack if empty
       if (player.rack.length === 0) {
-        player.rack = generateRack();
+        player.rack = generateRack(player.grid);
+      }
+
+      // Survival Lifeline: If none of the remaining pieces in rack can fit,
+      // offer a playable savior piece (line clearer, dot, or domino) so the player has a fighting chance!
+      if (!canFitAnywhere(player.grid, player.rack)) {
+        const savior = getPlayableSaviorPiece(player.grid);
+        if (shapeFits(player.grid, savior.cells)) {
+          player.rack[0] = savior;
+        }
       }
 
       // Check if player has valid moves remaining
@@ -272,7 +281,7 @@ function registerSocketHandlers(io, roomManager) {
       // Reset score, grid, rack, and blocked status for this player
       player.score = 0;
       player.grid = Array(8).fill(null).map(() => Array(8).fill(0));
-      player.rack = generateRack();
+      player.rack = generateRack(player.grid);
       player.blocked = false;
 
       callback?.({ ok: true });
